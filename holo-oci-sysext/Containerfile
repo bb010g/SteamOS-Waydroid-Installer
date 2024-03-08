@@ -1,0 +1,12 @@
+FROM ghcr.io/steamdeckhomebrew/holo-toolchain-go:latest AS build
+COPY . /usr/local/src/oci-sysext
+WORKDIR /usr/local/src/oci-sysext
+RUN CGO_ENABLED=0 go build -mod vendor -ldflags="-s -w" -o /usr/local/bin/oci-sysext
+
+FROM scratch AS out
+COPY --from=build /usr/local/bin/oci-sysext /bin/
+ENTRYPOINT ["/bin/oci-sysext"]
+
+FROM ghcr.io/steamdeckhomebrew/holo-base:latest AS run
+COPY --from=out / /usr/local/
+ENTRYPOINT ["/usr/local/bin/oci-sysext"]

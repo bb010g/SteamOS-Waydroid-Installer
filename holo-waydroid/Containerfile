@@ -1,0 +1,53 @@
+# holo-binder_linux-dkms {{{
+FROM holo-base-devel--aurutils AS holo-binder_linux-dkms--build
+RUN sudo -u aurbuild aur sync -d aurbuild -r -R --no-view --noconfirm binder_linux-dkms && rm -rf {,/var}/tmp/aurutils-$(id -u aurbuild) /var/cache/aurbuild/.cache && rm /var/cache/pacman/aurbuild/*.old && { yes | pacman -Scc; }
+
+FROM scratch AS holo-binder_linux-dkms--repo
+COPY --from=holo-binder_linux-dkms--build --chown=0:0 --chmod=644 /var/cache/pacman/aurbuild/ /
+
+FROM holo-base-devel--aurbuild AS holo-binder_linux-dkms
+COPY --from=holo-binder_linux-dkms--repo --chown=aurbuild:aurbuild /*.pkg.tar* /var/cache/pacman/aurbuild/
+RUN sudo -u aurbuild repo-add -n -R /var/cache/pacman/aurbuild/aurbuild.db.tar.gz /var/cache/pacman/aurbuild/*.pkg.tar* && rm /var/cache/pacman/aurbuild/*.old && pacman -Sy --noconfirm binder_linux-dkms && { yes | pacman -Scc; }
+# }}}
+
+# holo-cage {{{
+# FROM holo-base-devel--aurutils AS holo-cage--build
+# RUN pacman -Syw --cachedir /var/cache/pacman/aurbuild --noconfirm cage && rm /var/cache/pacman/aurbuild/*.pkg.tar*.sig && sudo -u aurbuild repo-add -n -R /var/cache/pacman/aurbuild/aurbuild.db.tar.gz /var/cache/pacman/aurbuild/*.pkg.tar* && rm /var/cache/pacman/aurbuild/*.old && { yes | pacman -Scc; }
+
+# FROM scratch AS holo-cage--repo
+# COPY --from=holo-cage--build --chown=0:0 --chmod=644 /var/cache/pacman/aurbuild/ /
+
+FROM holo-base-devel--aurbuild AS holo-cage
+# COPY --from=holo-cage--repo --chown=aurbuild:aurbuild /*.pkg.tar* /var/cache/pacman/aurbuild/
+# RUN sudo -u aurbuild repo-add -n -R /var/cache/pacman/aurbuild/aurbuild.db.tar.gz /var/cache/pacman/aurbuild/*.pkg.tar* && rm /var/cache/pacman/aurbuild/*.old && pacman -Sy --noconfirm cage && { yes | pacman -Scc; }
+RUN pacman -Sy --noconfirm cage && { yes | pacman -Scc; }
+# }}}
+
+# holo-waydroid {{{
+FROM holo-base-devel--aurutils AS holo-waydroid--build
+RUN sudo -u aurbuild aur sync -d aurbuild -r -R --no-view --noconfirm waydroid && rm -rf {,/var}/tmp/aurutils-$(id -u aurbuild) /var/cache/aurbuild/.cache && rm /var/cache/pacman/aurbuild/*.old && { yes | pacman -Scc; }
+
+FROM scratch AS holo-waydroid--repo
+COPY --from=holo-waydroid--build --chown=0:0 --chmod=644 /var/cache/pacman/aurbuild/ /
+
+FROM holo-base-devel--aurbuild AS holo-waydroid
+COPY --from=holo-waydroid--repo --chown=aurbuild:aurbuild /*.pkg.tar* /var/cache/pacman/aurbuild/
+RUN sudo -u aurbuild repo-add -n -R /var/cache/pacman/aurbuild/aurbuild.db.tar.gz /var/cache/pacman/aurbuild/*.pkg.tar* && rm /var/cache/pacman/aurbuild/*.old && pacman -Sy --noconfirm waydroid && { yes | pacman -Scc; }
+# }}}
+
+# holo-waydroid--bundle {{{
+FROM holo-base-devel--aurutils AS holo-waydroid--bundle--build
+COPY --from=holo-binder_linux-dkms--repo --chown=aurbuild:aurbuild /*.pkg.tar* /var/cache/pacman/aurbuild/
+# COPY --from=holo-cage--repo --chown=aurbuild:aurbuild /*.pkg.tar* /var/cache/pacman/aurbuild/
+COPY --from=holo-waydroid--repo --chown=aurbuild:aurbuild /*.pkg.tar* /var/cache/pacman/aurbuild/
+RUN sudo -u aurbuild repo-add -n -R /var/cache/pacman/aurbuild/aurbuild.db.tar.gz /var/cache/pacman/aurbuild/*.pkg.tar* && rm /var/cache/pacman/aurbuild/*.old
+
+FROM scratch AS holo-waydroid--bundle--repo
+COPY --from=holo-waydroid--bundle--build --chown=0:0 --chmod=644 /var/cache/pacman/aurbuild/ /
+
+FROM holo-base-devel--aurbuild AS holo-waydroid--bundle
+COPY --from=holo-waydroid--bundle--repo --chown=aurbuild:aurbuild /*.pkg.tar* /var/cache/pacman/aurbuild/
+RUN sudo -u aurbuild repo-add -n -R /var/cache/pacman/aurbuild/aurbuild.db.tar.gz /var/cache/pacman/aurbuild/*.pkg.tar* && rm /var/cache/pacman/aurbuild/*.old && pacman -Sy --noconfirm binder_linux-dkms cage waydroid && { yes | pacman -Scc; }
+# }}}
+
+# vim:fdm=marker

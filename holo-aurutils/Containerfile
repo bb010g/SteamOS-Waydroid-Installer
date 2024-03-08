@@ -1,0 +1,16 @@
+FROM holo-base-devel--aurbuild AS holo-aurutils--build
+RUN cd /var/cache/aurbuild && sudo -u aurbuild curl -L https://aur.archlinux.org/cgit/aur.git/snapshot/aurutils.tar.gz | sudo -u aurbuild tar -xz
+RUN cd /var/cache/aurbuild/aurutils && sudo -u aurbuild makepkg -src --noconfirm && mv -t /var/cache/pacman/aurbuild/ ./*.pkg.tar* && cd .. && rm -rf aurutils && sudo -u aurbuild -s repo-add -n -R /var/cache/pacman/aurbuild/aurbuild.db.tar.gz /var/cache/pacman/aurbuild/*.pkg.tar* && rm /var/cache/pacman/aurbuild/*.old && pacman -Sy --noconfirm && { yes | pacman -Scc; }
+
+FROM scratch AS holo-aurutils--repo
+COPY --from=holo-aurutils--build --chown=0:0 --chmod=644 /var/cache/pacman/aurbuild/ /
+
+FROM scratch AS holo-aurutils
+COPY --from=holo-aurutils--build --chown=0:0 --chmod=644 /var/cache/pacman/aurbuild/ /
+RUN sudo -u aurbuild repo-add -n -R /var/cache/pacman/aurbuild/aurbuild.db.tar.gz /var/cache/pacman/aurbuild/*.pkg.tar* && rm /var/cache/pacman/aurbuild/*.old && pacman -Sy --noconfirm aurutils && { yes | pacman -Scc; }
+
+FROM holo-base-devel--aurbuild AS holo-base-devel--aurutils
+COPY --from=holo-aurutils--repo --chown=aurbuild:aurbuild /*.pkg.tar* /var/cache/aurbuild/foreign-pkgs/
+# If `/dev/tty` is missing, `unbuffer(1)` (from `expect`) is required.
+# https://github.com/aurutils/aurutils/issues/1051
+RUN pacman -U --noconfirm /var/cache/aurbuild/foreign-pkgs/*.pkg.tar* && pacman -Sy --noconfirm expect && { yes | pacman -Scc; } && sudo -u aurbuild bash -c "install -d ~/.config/aurutils/sync && printf '%s\\n' \"\$@\" > ~/.config/aurutils/sync/orderfile" '' 'PKGFILE' && cat /etc/pacman.conf > /etc/aurutils/pacman-aurbuild.conf && cat /etc/makepkg.conf > /etc/aurutils/makepkg-aurbuild.conf && install -dm 755 /var/lib/aurbuild/x86_64

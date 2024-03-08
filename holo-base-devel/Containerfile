@@ -1,0 +1,5 @@
+FROM ghcr.io/steamdeckhomebrew/holo-base:latest AS holo-base-devel
+RUN pacman -Sy --noconfirm base-devel && { yes | pacman -Scc; }
+
+FROM holo-base-devel AS holo-base-devel--aurbuild
+RUN useradd --system --home-dir /var/cache/aurbuild --create-home aurbuild && printf '%s\n' 'aurbuild ALL=(root) NOPASSWD:SETENV: /usr/bin/makechrootpkg' 'aurbuild ALL=(root) NOPASSWD: /usr/bin/arch-nspawn, /usr/bin/aur, /usr/bin/mkarchroot, /usr/bin/pacman, /usr/bin/pacsync' 'Defaults:aurbuild lecture = "never"' > /etc/sudoers.d/aurbuild && install -d /var/cache/pacman/aurbuild -o aurbuild && sudo -u aurbuild repo-add /var/cache/pacman/aurbuild/aurbuild.db.tar.gz && printf '%s\n' '[aurbuild]' 'SigLevel = Optional TrustAll' 'Server = file:///var/cache/pacman/aurbuild' >> /etc/pacman.d/aurbuild && printf '%s\n' '' 'Include = /etc/pacman.d/aurbuild' >> /etc/pacman.conf && pacman -Sy
